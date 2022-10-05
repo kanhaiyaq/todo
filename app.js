@@ -1,84 +1,74 @@
 const express=require('express');
 const body=require('body-parser');
 const mongoose=require('mongoose');
+const user=require('./model/users');
+const ObjectId = require('mongodb').ObjectId;
+const session= require('express-session');
 
+const MongoDBStore = require("connect-mongodb-session")(session);
 const app=express();
+const MONGODB_URI='mongodb+srv://kanhaiyaq:hn3UG4vYwSi9KCAk@cluster0.sbhwfri.mongodb.net/';
+
+var store = new MongoDBStore({
+    uri: MONGODB_URI,
+    collection: 'mySessions'
+  });
+  
+
+
+
+
+app.use(session({
+    secret:'secret-key',
+    resave:false,
+    saveUninitialized:false,
+    store:store
+}));
+
+
+
 app.use(body.urlencoded({extended:true}))
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.set('views','view');
 
+const isAuth=(req,res,next)=>{ 
+    if (req.session.isAuth) {
+    next();
+  } else {
+    req.session.error = "You have to Login first";
+    res.redirect("/login");
+  }
+}
+
 const addate=["hello"];
-const Itemschema= new mongoose.Schema({
-    name:String
-})
-const lists=mongoose.model('Lists',Itemschema);
 
 
-app.get('/',function(req,res,next){
+const todolist=require('./routes/to_do_list');
+const userlist=require('./routes/user');
 
-    lists.find(function(err,result){
-          
-        if(!err){
-             res.render('list',
-                {title:'To Do App',
-                date:new Date().toString().split(" ",5),
-                p:result
-                });
-        }
-        else{
-            throw new Error("response end");
-        }
-       })
-    .catch(err=>{console.log(err)});
-   
-   
-});
 
-app.post('/res',(req,res,next)=>{
-   
-    const description=req.body.description;
-    const first=new lists({name:description});
-    first.save().
-    then(result=>console.log("inserted successfully"))
-    .catch(err=>console.log(err));
-    // if(description.length>0&&adddata.length<18)
-    // {
-    //  adddata.push(description);
-    // }
-     res.redirect('/');
- });
+// const customMiddleWare = (req,res,next)=>{
+//     console.log('Custom middle ware called');
+//     console.log(req.user);
+//     next();
+// }
+//app.use(customMiddleWare);
 
-app.post('/',(req,res,next)=>{
-    const name=req.body.checkbox;
-    // console.log(req.body.checkbox);
-    lists.deleteOne({name:name},function(err){
-        if(!err)
-        {
-            console.log("succesfully deleted");
-        }
-        else
-        {
-            console.log("there is a error");
-        }
-    })
-       
-   res.redirect('/');
-    // adddata.splice(index,1);
-    //  res.redirect('/');
- });
+app.use(userlist); 
+app.use(isAuth,todolist);  
+
 
 //  app.get('/:custom',(req,res,next)=>{
 //     console.log(req.params.custom);
 //  });
 
- app.get('/login',(req,res,next)=>{
-    res.render('login');
- })
 
 
-mongoose.connect('mongodb+srv://kanhaiyaq:HnC0m2qXcZeMlsBX@cluster0.bs8kgsz.mongodb.net/todo').then(
-    result=>
+
+
+ mongoose.connect(MONGODB_URI).then(
+   result=>
     {
         app.listen(3000,function(req,res)
         {
